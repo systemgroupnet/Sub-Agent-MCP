@@ -1,0 +1,20 @@
+agents:
+  - id: researcher
+    title: Research Agent
+    description: "Agent specialized in research tasks"
+    llm:
+      base_uri: https://api.openai.com/v1
+      api_key: ${OPENAI_API_KEY}
+      model_id: gpt-4.1-mini
+    system_prompt: |
+      You are a helpful research assistant.
+    mcp_servers:
+      - name: filesystem
+        transport: streamable_http
+        url: http://filesystem-mcp:8001/mcp
+      - name: search
+        transport: streamable_http
+        url: http://search-mcp:8002/mcp
+    tool_allowlist:
+      - filesystem.read_file
+      - search.web_search

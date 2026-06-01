@@ -1,0 +1,39 @@
+services:
+  sub-agent-mcp:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY:?OPENAI_API_KEY is required}
+      AGENTS_CONFIG_PATH: /app/config/agents.yaml
+      LOG_LEVEL: INFO
+    depends_on:
+      filesystem-mcp:
+        condition: service_started
+      search-mcp:
+        condition: service_started
+    restart: unless-stopped
+
+  filesystem-mcp:
+    image: python:3.12-slim
+    working_dir: /app
+    volumes:
+      - ./docker/mock_mcp:/app
+    command: >
+      sh -c "pip install --no-cache-dir 'mcp[cli]>=1.27,<2' &&
+             python filesystem_server.py"
+    ports:
+      - "8001:8001"
+    restart: unless-stopped
+
+  search-mcp:
+    image: python:3.12-slim
+    working_dir: /app
+    volumes:
+      - ./docker/mock_mcp:/app
+    command: >
+      sh -c "pip install --no-cache-dir 'mcp[cli]>=1.27,<2' &&
+             python search_server.py"
+    ports:
+      - "8002:8002"
+    restart: unless-stopped
