@@ -17,7 +17,7 @@ logger = get_logger(__name__)
 
 @dataclass(frozen=True)
 class ToolMetadata:
-    """Sanitized tool metadata for list_agents output."""
+    """Sanitized tool metadata for downstream MCP tool discovery."""
 
     name: str
     server: str

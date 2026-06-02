@@ -5,7 +5,7 @@
 [![Python](https://img.shields.io/badge/python-%3E%3D3.10-blue.svg)](https://www.python.org/downloads/)
 [![Container](https://img.shields.io/badge/ghcr.io-sub--agent--mcp-2496ED?logo=docker&logoColor=white)](https://github.com/stormaref/Sub-Agent-MCP/pkgs/container/sub-agent-mcp)
 
-Production-ready Python MCP server for **LLM delegation and sub-agent orchestration**. A parent LLM (for example, Cursor’s agent) connects to this server, discovers configured sub-agents, and delegates work via `spawn_agent`.
+Production-ready Python MCP server for **LLM delegation and sub-agent orchestration**. A parent LLM (for example, Cursor’s agent) connects to this server and delegates work by calling a **tool named after each agent** defined in YAML (for example, `researcher`).
 
 Each sub-agent is defined in YAML with its own LLM, system prompt, and optional downstream MCP tool servers.
 
@@ -33,8 +33,8 @@ Each sub-agent is defined in YAML with its own LLM, system prompt, and optional 
 Sub-Agent MCP sits between a **parent LLM** and one or more **specialized sub-agents**:
 
 1. The parent connects to this server over **Streamable HTTP** at `/mcp`.
-2. It calls `list_agents` to see which sub-agents are configured and what tools they can use.
-3. It calls `spawn_agent` with an `agent_id` and a prompt; the server runs that sub-agent and returns the final response.
+2. At startup, each agent in `agents.yaml` is registered as an MCP tool named by its `id`.
+3. The parent calls that tool with a `prompt`; the server runs the sub-agent and returns the final response.
 
 Each sub-agent is a [LangChain](https://github.com/langchain-ai/langchain) agent with its own OpenAI-compatible LLM, system prompt, and optional connections to other MCP servers (filesystem, search, your own tools, and so on). Tool access can be restricted per agent with an allowlist.
 
@@ -46,11 +46,8 @@ sequenceDiagram
     participant LLM as OpenAI_compatible_LLM
     participant Tools as Downstream_MCP_servers
 
-    Parent->>SAMCP: list_agents
-    SAMCP-->>Parent: agents, models, tools (no API keys)
-
-    Parent->>SAMCP: spawn_agent(agent_id, prompt)
-    SAMCP->>Agent: build agent + tools
+    Parent->>SAMCP: researcher(prompt)
+    SAMCP->>Agent: build agent + downstream tools
     Agent->>LLM: reasoning loop
     Agent->>Tools: MCP tool calls
     Tools-->>Agent: tool results
@@ -63,7 +60,7 @@ This is different from giving one agent every tool in the workspace: the parent 
 
 ## Why use it?
 
-- **Delegation without context bloat** — The parent discovers agents and prompts them; it does not need every downstream tool schema in its own context.
+- **Delegation without context bloat** — The parent calls agent tools directly; it does not need every downstream tool schema in its own context.
 - **Per-role configuration** — Different `id`s can use different models, prompts, MCP servers, and tool allowlists.
 - **Production-oriented** — Pydantic-validated YAML, structured logging, Docker health checks, CI, and GHCR images on release tags.
 - **OpenAI-compatible providers** — Point `llm.base_uri` at OpenAI, Azure, Ollama, LM Studio, or any compatible API.
@@ -86,7 +83,7 @@ This is different from giving one agent every tool in the workspace: the parent 
 
 **Security**
 
-- `list_agents` never exposes API keys.
+- Agent tool descriptions never expose API keys.
 
 **Operations**
 
@@ -96,8 +93,7 @@ This is different from giving one agent every tool in the workspace: the parent 
 
 **MCP tools exposed by this server**
 
-- `list_agents` — Discover configured sub-agents and their tools.
-- `spawn_agent` — Run a sub-agent with a prompt.
+Each agent in `agents.yaml` is registered as a tool named by its `id` (for example, `researcher`). Each tool accepts a single `prompt` argument and runs that sub-agent.
 
 ## Prerequisites
 
@@ -188,17 +184,17 @@ curl -s http://localhost:8000/mcp/openapi.json | head
 | **URL** | `http://localhost:8000/mcp` (or `http://mcp.example.com/sub-agent/mcp` behind a proxy) |
 | **OpenAPI path** | `openapi.json` (default) |
 
-Open WebUI appends tool paths from the spec (for example `/tools/list_agents`) to that URL:
+Open WebUI appends tool paths from the spec (for example `/tools/researcher`) to that URL:
 
 ```bash
-curl -s -X POST http://localhost:8000/mcp/tools/list_agents -H 'Content-Type: application/json' -d '{}'
+curl -s -X POST http://localhost:8000/mcp/tools/researcher \
+  -H 'Content-Type: application/json' \
+  -d '{"prompt":"Summarize what tools you have access to."}'
 ```
 
 **Docker health** — The image health check probes `http://127.0.0.1:8000/mcp`.
 
-**Functional check** — After connecting Cursor (below), ask the parent agent to call `list_agents`. You should see the `researcher` agent, its model, MCP servers, and tools such as `filesystem.read_file` and `search.web_search`. API keys must not appear in the response.
-
-Then try `spawn_agent` with `agent_id: researcher` and a short prompt. A successful run returns `{ "response": "..." }`.
+**Functional check** — After connecting Cursor (below), ask the parent agent to call the `researcher` tool with a short prompt. A successful run returns `{ "response": "..." }`.
 
 ## Connect Cursor
 
@@ -216,11 +212,11 @@ Then try `spawn_agent` with `agent_id: researcher` and a short prompt. A success
 ```
 
 3. Ensure the Sub-Agent MCP process is running and Cursor can reach `localhost:8000`. On WSL or Docker Desktop, confirm port forwarding if the server runs in a VM or container.
-4. Reload MCP tools. You should see **`list_agents`** and **`spawn_agent`**.
+4. Reload MCP tools. You should see one tool per agent (for example, **`researcher`**).
 
 **Example delegation prompt for the parent agent:**
 
-> Use `list_agents` to see available sub-agents. Then call `spawn_agent` with `agent_id` `researcher` and prompt: "Summarize what tools you have access to."
+> Call the `researcher` tool with prompt: "Summarize what tools you have access to."
 
 **Other MCP clients** — Any client that supports **Streamable HTTP** can connect to `http://<host>:8000/mcp`. Refer to your client’s MCP documentation for URL-based server configuration; this server does not use stdio transport.
 
@@ -232,7 +228,7 @@ flowchart LR
         Cursor[Cursor agent]
     end
     subgraph subagentmcp [Sub_Agent_MCP]
-        ToolsMCP[list_agents / spawn_agent]
+        ToolsMCP[agent tools e.g. researcher]
         Builder[Agent builder]
     end
     subgraph subagent [Sub_agent runtime]
@@ -252,11 +248,11 @@ flowchart LR
     LC --> SRCH
 ```
 
-**`spawn_agent` flow**
+**Agent tool flow**
 
-1. Load and validate [config/agents.yaml](config/agents.yaml) (or `AGENTS_CONFIG_PATH`).
-2. Resolve the agent by `agent_id`.
-3. Build an OpenAI-compatible chat model from `llm.*`.
+1. Load and validate [config/agents.yaml](config/agents.yaml) (or `AGENTS_CONFIG_PATH`) at startup.
+2. Register one MCP tool per agent, named by `id`.
+3. When a tool is called, build an OpenAI-compatible chat model from that agent’s `llm.*`.
 4. Connect to the agent’s `mcp_servers`, discover tools, apply `tool_allowlist` if set.
 5. Run the LangChain agent loop (bounded by `AGENT_RECURSION_LIMIT`).
 6. Return the final assistant message as `{ "response": "..." }`, or `{ "error": "..." }` on failure.
@@ -297,7 +293,7 @@ Copy [config/agents.example.yaml](config/agents.example.yaml) as a starting poin
 | ----------------------- | -------------------------------------------------------------------------------------------- |
 | `id`                    | Unique slug; must start with a lowercase letter, then lowercase letters, digits, `-`, or `_` |
 | `title`                 | Human-readable name                                                                          |
-| `description`           | Agent purpose (shown to parent via `list_agents`)                                            |
+| `description`           | Agent purpose (shown in the tool description exposed to the parent)                          |
 | `llm.base_uri`          | OpenAI-compatible API base URL                                                               |
 | `llm.api_key`           | API key; supports `${ENV_VAR}` substitution                                                  |
 | `llm.model_id`          | Model identifier for the provider                                                            |
@@ -360,30 +356,22 @@ mcp_servers:
 
 ## MCP tools reference
 
-### `list_agents`
+Each agent in `config/agents.yaml` is exposed as an MCP tool named by its `id`.
 
-Returns all configured agents with:
+### Per-agent tools (for example, `researcher`)
 
-- `id`, `title`, `description`
-- `model_id`, `base_uri` (no API keys)
-- `mcp_servers` (name and url)
-- `available_tools` (after allowlist filtering), each with `name`, `server`, `description`, `qualified_name`
-
-If a downstream MCP server is unreachable, that agent may appear with an empty `available_tools` list; a warning is logged server-side.
-
-### `spawn_agent`
-
-| Parameter  | Type   | Description                    |
-| ---------- | ------ | ------------------------------ |
-| `agent_id` | string | Agent `id` from config         |
-| `prompt`   | string | User message for the sub-agent |
+| Parameter | Type   | Description                    |
+| --------- | ------ | ------------------------------ |
+| `prompt`  | string | User message for the sub-agent |
 
 **Returns**
 
 | Shape                   | Meaning                                                             |
 | ----------------------- | ------------------------------------------------------------------- |
 | `{ "response": "..." }` | Success; final assistant text                                       |
-| `{ "error": "..." }`    | Failure (unknown agent, LLM error, MCP connection error, and so on) |
+| `{ "error": "..." }`    | Failure (LLM error, MCP connection error, and so on)                |
+
+Tool descriptions include `title`, `description`, and `model_id` but never API keys.
 
 Errors are returned in the result object; they do not crash the MCP server process.
 
@@ -396,7 +384,7 @@ Errors are returned in the result object; they do not crash the MCP server proce
 | `PORT`                  | `8000`               | Server bind port                                                                              |
 | `LOG_LEVEL`             | `INFO`               | Log level (`DEBUG`, `INFO`, …)                                                                |
 | `MCP_CLIENT_TIMEOUT`    | `30`                 | Timeout in seconds when connecting to downstream MCP servers; increase for slow tools         |
-| `AGENT_RECURSION_LIMIT` | `25`                 | Maximum LangChain agent tool-loop steps per `spawn_agent` call; increase for multi-step tasks |
+| `AGENT_RECURSION_LIMIT` | `25`                 | Maximum LangChain agent tool-loop steps per agent tool call; increase for multi-step tasks |
 
 ## Project layout
 
@@ -406,7 +394,7 @@ config/
   agents.yaml            # Runtime config (example committed in repo)
 src/sub_agent_mcp/
   main.py                # FastMCP entry point
-  server/                # list_agents, spawn_agent, OpenAPI route
+  server/                # Per-agent MCP tools, OpenAPI route
   agent/                 # LangChain builder and executor
   config/                # YAML loader and Pydantic schema
   mcp_client/            # Downstream MCP connections and tool registry
@@ -450,9 +438,9 @@ Image tags include the semver, `latest`, and major.minor aliases per the metadat
 | ---------------------------------------- | -------------------------------------------- | ----------------------------------------------------------------------------------------- |
 | `Configuration error` on startup         | Missing or invalid `agents.yaml`             | Copy [config/agents.example.yaml](config/agents.example.yaml); check `AGENTS_CONFIG_PATH` |
 | `Environment variable 'X' is not set`    | `${X}` without default in YAML               | `export X=...` or use `${X:-default}`                                                     |
-| `spawn_agent` MCP / connection errors    | Wrong MCP URL for your environment           | Use the [Local vs Docker MCP URLs](#local-vs-docker-mcp-urls) table                       |
+| Agent tool MCP / connection errors       | Wrong MCP URL for your environment           | Use the [Local vs Docker MCP URLs](#local-vs-docker-mcp-urls) table                       |
 | `401` / invalid credentials              | Bad `llm.api_key` for that agent             | Verify provider key and `base_uri`                                                        |
-| Empty `available_tools` in `list_agents` | Mock servers not running or strict allowlist | Start `filesystem-mcp` / `search-mcp`; review `tool_allowlist`                            |
+| Downstream MCP tools unavailable         | Mock servers not running or strict allowlist | Start `filesystem-mcp` / `search-mcp`; review `tool_allowlist`                            |
 | Cursor cannot connect                    | Server not running or port blocked           | Confirm `curl http://localhost:8000/mcp/openapi.json`; check firewall / WSL networking    |
 | Agent stops after few tool calls         | Recursion limit                              | Raise `AGENT_RECURSION_LIMIT`                                                             |
 

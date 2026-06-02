@@ -51,7 +51,7 @@ def build_openapi_document(mcp: FastMCP) -> dict[str, Any]:
                 "summary": "MCP Streamable HTTP transport",
                 "description": (
                     "Primary MCP endpoint (JSON-RPC over Streamable HTTP). "
-                    "Use an MCP client to call tools such as list_agents and spawn_agent."
+                    "Use an MCP client to call agent tools registered from agents.yaml."
                 ),
                 "tags": ["mcp"],
                 "responses": {
@@ -122,9 +122,10 @@ def build_openapi_document(mcp: FastMCP) -> dict[str, Any]:
             "title": mcp.name,
             "version": __version__,
             "description": (
-                "Sub-Agent MCP server. Tools can be invoked via MCP JSON-RPC at "
+                "Sub-Agent MCP server. Each agent in agents.yaml is exposed as a tool. "
+                "Invoke via MCP JSON-RPC at "
                 f"{MCP_TRANSPORT_PATH} or via OpenAPI-compatible POST requests at "
-                f"{OPENAPI_TOOLS_PATH_PREFIX}/{{tool_name}}."
+                f"{OPENAPI_TOOLS_PATH_PREFIX}/{{agent_id}}."
             ),
         },
         "paths": paths,
