@@ -1,0 +1,42 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Release: bump zero-version tag and push",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "${workspaceFolder}/scripts/bump-tag.sh",
+        "${input:releaseBumpType}"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "focus": true,
+        "clear": true
+      }
+    }
+  ],
+  "inputs": [
+    {
+      "id": "releaseBumpType",
+      "type": "pickString",
+      "description": "Zero-version bump (format v0.major.minor)",
+      "options": [
+        {
+          "label": "Minor — v0.x.(y+1) (default)",
+          "value": "minor"
+        },
+        {
+          "label": "Major — v0.(x+1).0",
+          "value": "major"
+        }
+      ],
+      "default": "minor"
+    }
+  ]
+}

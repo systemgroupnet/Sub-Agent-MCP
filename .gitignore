@@ -17,7 +17,6 @@ build/
 
 # IDE
 .idea/
-.vscode/
 *.swp
 
 # uv lockfile (optional — generated in CI)
