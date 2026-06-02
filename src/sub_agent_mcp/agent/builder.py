@@ -17,6 +17,11 @@ logger = get_logger(__name__)
 DEFAULT_RECURSION_LIMIT = int(os.getenv("AGENT_RECURSION_LIMIT", "25"))
 
 
+def _is_official_openai_api(base_uri: str) -> bool:
+    """Return True when the LLM base URL targets the official OpenAI API."""
+    return "api.openai.com" in base_uri.lower()
+
+
 def build_llm_kwargs(agent: AgentConfig) -> dict[str, Any]:
     """Map agent LLM config to ChatOpenAI constructor kwargs."""
     llm = agent.llm
@@ -34,14 +39,17 @@ def build_llm_kwargs(agent: AgentConfig) -> dict[str, Any]:
     reasoning: dict[str, str] = {}
     if llm.reasoning_effort is not None:
         reasoning["effort"] = llm.reasoning_effort
-        kwargs["reasoning_effort"] = llm.reasoning_effort
     if llm.reasoning_summary is not None:
         reasoning["summary"] = llm.reasoning_summary
 
     if reasoning:
-        kwargs["reasoning"] = reasoning
-        # OpenRouter and other OpenAI-compatible providers expect reasoning here.
-        kwargs["extra_body"] = {"reasoning": reasoning}
+        if _is_official_openai_api(str(llm.base_uri)):
+            # Official OpenAI uses the Responses API reasoning object.
+            kwargs["reasoning"] = reasoning
+        else:
+            # OpenRouter and other OpenAI-compatible providers use Chat Completions
+            # with provider-specific fields nested under extra_body.
+            kwargs["extra_body"] = {"reasoning": reasoning}
 
     return kwargs
 

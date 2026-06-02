@@ -37,9 +37,30 @@ def test_build_llm_kwargs_minimal() -> None:
 def test_build_llm_kwargs_includes_reasoning_effort() -> None:
     kwargs = build_llm_kwargs(_agent(reasoning_effort="high"))
 
-    assert kwargs["reasoning_effort"] == "high"
-    assert kwargs["reasoning"] == {"effort": "high"}
+    assert "reasoning_effort" not in kwargs
+    assert "reasoning" not in kwargs
     assert kwargs["extra_body"] == {"reasoning": {"effort": "high"}}
+
+
+def test_build_llm_kwargs_openai_uses_reasoning_object() -> None:
+    agent = AgentConfig(
+        id="researcher",
+        title="Research Agent",
+        description="Test agent",
+        llm=LLMConfig(
+            base_uri="https://api.openai.com/v1",
+            api_key=SecretStr("test-key"),
+            model_id="gpt-5-nano",
+            reasoning_effort="medium",
+        ),
+        system_prompt="You are helpful.",
+    )
+
+    kwargs = build_llm_kwargs(agent)
+
+    assert kwargs["reasoning"] == {"effort": "medium"}
+    assert "extra_body" not in kwargs
+    assert "reasoning_effort" not in kwargs
 
 
 def test_build_llm_kwargs_includes_reasoning_summary() -> None:
