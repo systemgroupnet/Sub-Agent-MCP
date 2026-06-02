@@ -297,6 +297,11 @@ Copy [config/agents.example.yaml](config/agents.example.yaml) as a starting poin
 | `llm.base_uri`          | OpenAI-compatible API base URL                                                               |
 | `llm.api_key`           | API key; supports `${ENV_VAR}` substitution                                                  |
 | `llm.model_id`          | Model identifier for the provider                                                            |
+| `llm.reasoning_effort`  | Optional reasoning budget: `none`, `minimal`, `low`, `medium`, `high`, `xhigh`               |
+| `llm.reasoning_summary` | Optional reasoning summary style: `auto`, `concise`, `detailed` (use `detailed` for longer)  |
+| `llm.verbosity`         | Optional response verbosity for reasoning models: `low`, `medium`, `high`                      |
+| `llm.max_tokens`        | Optional max output tokens (increase if answers are cut short)                               |
+| `llm.temperature`       | Optional sampling temperature (`0.0`–`2.0`)                                                  |
 | `system_prompt`         | System message for the sub-agent                                                             |
 | `mcp_servers`           | List of remote MCP servers (`transport` must be `streamable_http`)                           |
 | `mcp_servers[].name`    | Short name used in qualified tool names (`name.tool`)                                        |

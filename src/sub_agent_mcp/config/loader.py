@@ -16,9 +16,7 @@ from sub_agent_mcp.config.errors import (
 )
 from sub_agent_mcp.config.schema import AgentConfig, AgentsFile
 
-ENV_VAR_PATTERN = re.compile(
-    r"\$\{([A-Za-z_][A-Za-z0-9_]*)(?::-([^}]*))?\}"
-)
+ENV_VAR_PATTERN = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)(?::-([^}]*))?\}")
 
 DEFAULT_CONFIG_PATH = Path("config/agents.yaml")
 

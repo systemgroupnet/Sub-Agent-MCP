@@ -18,12 +18,22 @@ from pydantic import (
 AGENT_ID_PATTERN = re.compile(r"^[a-z][a-z0-9_-]*$")
 
 
+ReasoningEffort = Literal["none", "minimal", "low", "medium", "high", "xhigh"]
+ReasoningSummary = Literal["auto", "concise", "detailed"]
+Verbosity = Literal["low", "medium", "high"]
+
+
 class LLMConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     base_uri: HttpUrl
     api_key: SecretStr
     model_id: str = Field(min_length=1)
+    temperature: float | None = Field(default=None, ge=0.0, le=2.0)
+    max_tokens: int | None = Field(default=None, ge=1)
+    reasoning_effort: ReasoningEffort | None = None
+    reasoning_summary: ReasoningSummary | None = None
+    verbosity: Verbosity | None = None
 
 
 class MCPServerConfig(BaseModel):

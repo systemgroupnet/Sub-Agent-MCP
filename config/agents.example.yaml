@@ -6,6 +6,12 @@ agents:
       base_uri: https://api.openai.com/v1
       api_key: ${OPENAI_API_KEY}
       model_id: gpt-4.1-mini
+      # Optional generation controls:
+      # reasoning_effort: medium   # none | minimal | low | medium | high | xhigh
+      # reasoning_summary: detailed  # auto | concise | detailed (OpenRouter/OpenAI reasoning models)
+      # verbosity: medium          # low | medium | high (response length for reasoning models)
+      # max_tokens: 8192
+      # temperature: 0.7
     system_prompt: |
       You are a helpful research assistant.
     mcp_servers:

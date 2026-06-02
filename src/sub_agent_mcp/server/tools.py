@@ -14,10 +14,7 @@ logger = get_logger(__name__)
 
 
 def _agent_tool_description(agent: AgentConfig) -> str:
-    return (
-        f"{agent.title}: {agent.description} "
-        f"(model: {agent.llm.model_id})"
-    )
+    return f"{agent.title}: {agent.description} (model: {agent.llm.model_id})"
 
 
 def register_tools(mcp: FastMCP, config: AgentsFile) -> None:

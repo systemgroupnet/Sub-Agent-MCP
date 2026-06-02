@@ -154,6 +154,7 @@ def register_tool_http_routes(mcp: FastMCP) -> None:
     """Register OpenAPI-compatible POST tool routes for Open WebUI."""
 
     for tool in mcp._tool_manager.list_tools():
+
         def make_handler(tool_name: str):
             async def tool_handler(request: Request) -> Response:
                 try:

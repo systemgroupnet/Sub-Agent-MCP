@@ -17,15 +17,40 @@ logger = get_logger(__name__)
 DEFAULT_RECURSION_LIMIT = int(os.getenv("AGENT_RECURSION_LIMIT", "25"))
 
 
+def build_llm_kwargs(agent: AgentConfig) -> dict[str, Any]:
+    """Map agent LLM config to ChatOpenAI constructor kwargs."""
+    llm = agent.llm
+    kwargs: dict[str, Any] = {
+        "model": llm.model_id,
+        "base_url": str(llm.base_uri),
+        "api_key": llm.api_key.get_secret_value(),
+    }
+
+    for field in ("temperature", "max_tokens", "verbosity"):
+        value = getattr(llm, field)
+        if value is not None:
+            kwargs[field] = value
+
+    reasoning: dict[str, str] = {}
+    if llm.reasoning_effort is not None:
+        reasoning["effort"] = llm.reasoning_effort
+        kwargs["reasoning_effort"] = llm.reasoning_effort
+    if llm.reasoning_summary is not None:
+        reasoning["summary"] = llm.reasoning_summary
+
+    if reasoning:
+        kwargs["reasoning"] = reasoning
+        # OpenRouter and other OpenAI-compatible providers expect reasoning here.
+        kwargs["extra_body"] = {"reasoning": reasoning}
+
+    return kwargs
+
+
 def build_llm(agent: AgentConfig) -> ChatOpenAI:
     """Create an OpenAI-compatible chat model from agent LLM config."""
     from langchain_openai import ChatOpenAI
 
-    return ChatOpenAI(
-        model=agent.llm.model_id,
-        base_url=str(agent.llm.base_uri),
-        api_key=agent.llm.api_key.get_secret_value(),
-    )
+    return ChatOpenAI(**build_llm_kwargs(agent))
 
 
 async def build_agent(agent: AgentConfig) -> Any:
