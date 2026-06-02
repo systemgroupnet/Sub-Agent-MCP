@@ -46,3 +46,23 @@ def test_openapi_route_returns_json(mcp_app: object) -> None:
     assert response.status_code == 200
     document = json.loads(response.text)
     assert document["paths"]["/mcp/tools/list_agents"]["post"]["operationId"] == "list_agents"
+
+
+def test_list_agents_http_route(mcp_app: object) -> None:
+    app = mcp_app.streamable_http_app()  # type: ignore[attr-defined]
+    with TestClient(app) as client:
+        response = client.post("/mcp/tools/list_agents", json={})
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert "result" in payload
+    assert payload["result"][0]["id"] == "researcher"
+
+
+def test_spawn_agent_http_route_missing_args(mcp_app: object) -> None:
+    app = mcp_app.streamable_http_app()  # type: ignore[attr-defined]
+    with TestClient(app) as client:
+        response = client.post("/mcp/tools/spawn_agent", json={})
+
+    assert response.status_code == 500
+    assert "error" in response.json()

@@ -181,6 +181,18 @@ Mount your own `agents.yaml` and ensure MCP `url` values are reachable from insi
 curl -s http://localhost:8000/mcp/openapi.json | head
 ```
 
+**Open WebUI (OpenAPI tool server)** — Register as **OpenAPI** (not MCP). Use the server base URL **without** `/mcp/openapi.json`; Open WebUI appends paths from the spec (for example `/mcp/tools/list_agents`):
+
+```bash
+# Base URL in Admin Settings → External Tools (Type: OpenAPI)
+http://localhost:8000
+
+# Or, if behind a reverse-proxy prefix:
+http://mcp.example.com/sub-agent
+
+curl -s -X POST http://localhost:8000/mcp/tools/list_agents -H 'Content-Type: application/json' -d '{}'
+```
+
 **Docker health** — The image health check probes `http://127.0.0.1:8000/mcp`.
 
 **Functional check** — After connecting Cursor (below), ask the parent agent to call `list_agents`. You should see the `researcher` agent, its model, MCP servers, and tools such as `filesystem.read_file` and `search.web_search`. API keys must not appear in the response.

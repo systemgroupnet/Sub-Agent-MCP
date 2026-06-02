@@ -1,10 +1,12 @@
-"""OpenAPI document generation for the MCP HTTP surface."""
+"""OpenAPI document generation and REST tool routes for Open WebUI."""
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 from mcp.server.fastmcp import FastMCP
+from mcp.server.fastmcp.exceptions import ToolError
 from mcp.server.fastmcp.tools.base import Tool
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
@@ -117,21 +119,74 @@ def build_openapi_document(mcp: FastMCP) -> dict[str, Any]:
             "title": mcp.name,
             "version": __version__,
             "description": (
-                "Sub-Agent MCP server. Tools are invoked via the MCP protocol at "
-                f"{MCP_TRANSPORT_PATH}; tool paths document input/output schemas."
+                "Sub-Agent MCP server. Tools can be invoked via MCP JSON-RPC at "
+                f"{MCP_TRANSPORT_PATH} or via OpenAPI-compatible POST requests at "
+                f"{TOOLS_PATH_PREFIX}/{{tool_name}}."
             ),
         },
         "paths": paths,
         "tags": [
             {"name": "mcp", "description": "Model Context Protocol transport"},
-            {"name": "tools", "description": "MCP tool schemas (invoke via /mcp)"},
+            {"name": "tools", "description": "OpenAPI-compatible REST tool endpoints"},
             {"name": "meta", "description": "Server metadata"},
         ],
     }
 
 
+def _tool_http_response(result: Any) -> dict[str, Any]:
+    """Normalize FastMCP tool output for Open WebUI OpenAPI clients."""
+    if isinstance(result, tuple) and len(result) == 2:
+        structured = result[1]
+        if isinstance(structured, dict):
+            return structured
+    if isinstance(result, dict):
+        return result
+    if isinstance(result, list):
+        return {"result": result}
+    return {"result": result}
+
+
+def register_tool_http_routes(mcp: FastMCP) -> None:
+    """Register POST /mcp/tools/{tool_name} routes for Open WebUI OpenAPI clients."""
+
+    for tool in mcp._tool_manager.list_tools():
+        path = f"{TOOLS_PATH_PREFIX}/{tool.name}"
+
+        def make_handler(tool_name: str):
+            async def tool_handler(request: Request) -> Response:
+                try:
+                    body = await request.json()
+                except json.JSONDecodeError:
+                    return JSONResponse(
+                        {"error": "Request body must be valid JSON"},
+                        status_code=400,
+                    )
+
+                if body is None:
+                    body = {}
+                if not isinstance(body, dict):
+                    return JSONResponse(
+                        {"error": "Request body must be a JSON object"},
+                        status_code=400,
+                    )
+
+                try:
+                    result = await mcp.call_tool(tool_name, body)
+                except ToolError as exc:
+                    return JSONResponse({"error": str(exc)}, status_code=500)
+
+                return JSONResponse(_tool_http_response(result))
+
+            return tool_handler
+
+        mcp.custom_route(path, methods=["POST"], name=f"tool_{tool.name}")(
+            make_handler(tool.name)
+        )
+
+
 def register_openapi_route(mcp: FastMCP) -> None:
-    """Register GET /mcp/openapi.json on the FastMCP HTTP app."""
+    """Register OpenAPI metadata and REST tool routes on the FastMCP HTTP app."""
+    register_tool_http_routes(mcp)
 
     @mcp.custom_route(OPENAPI_PATH, methods=["GET"], name="openapi")
     async def openapi_handler(_request: Request) -> Response:
