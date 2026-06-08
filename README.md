@@ -1,9 +1,9 @@
 # Sub-Agent MCP
 
-[![CI](https://github.com/stormaref/Sub-Agent-MCP/actions/workflows/ci.yml/badge.svg)](https://github.com/stormaref/Sub-Agent-MCP/actions/workflows/ci.yml)
+[![CI](https://github.com/systemgroupnet/Sub-Agent-MCP/actions/workflows/ci.yml/badge.svg)](https://github.com/systemgroupnet/Sub-Agent-MCP/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-%3E%3D3.10-blue.svg)](https://www.python.org/downloads/)
-[![Container](https://img.shields.io/badge/ghcr.io-sub--agent--mcp-2496ED?logo=docker&logoColor=white)](https://github.com/stormaref/Sub-Agent-MCP/pkgs/container/sub-agent-mcp)
+[![Container](https://img.shields.io/badge/ghcr.io-sub--agent--mcp-2496ED?logo=docker&logoColor=white)](https://github.com/systemgroupnet/Sub-Agent-MCP/pkgs/container/sub-agent-mcp)
 
 Production-ready Python MCP server for **LLM delegation and sub-agent orchestration**. A parent LLM (for example, Cursor’s agent) connects to this server and delegates work by calling a **tool named after each agent** defined in YAML (for example, `researcher`).
 
@@ -164,7 +164,7 @@ Images are published on **git tags** matching `v*` (for example `v0.1.2`), not o
 docker run -p 8000:8000 \
   -e OPENAI_API_KEY=sk-... \
   -v "$(pwd)/config/agents.yaml:/app/config/agents.yaml:ro" \
-  ghcr.io/stormaref/sub-agent-mcp:latest
+  ghcr.io/systemgroupnet/sub-agent-mcp:latest
 ```
 
 Mount your own `agents.yaml` and ensure MCP `url` values are reachable from inside the container (use host networking, service names, or `host.docker.internal` as appropriate).
@@ -427,7 +427,7 @@ Pull requests and pushes to `main` run lint and tests in [`.github/workflows/ci.
 
 ## Docker image and releases
 
-**Registry:** `ghcr.io/stormaref/sub-agent-mcp`
+**Registry:** `ghcr.io/systemgroupnet/sub-agent-mcp`
 
 **When images publish:** Pushing a git tag `v0.*` (for example `v0.1.2`) runs the Docker job after tests pass. Pushes to `main` alone do not publish images.
 
