@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import logging
 import sys
+from collections.abc import Iterator
+from contextlib import contextmanager
 
 import structlog
 
@@ -32,3 +34,17 @@ def setup_logging(level: str = "INFO") -> None:
 
 def get_logger(name: str) -> structlog.stdlib.BoundLogger:
     return structlog.get_logger(name)
+
+
+@contextmanager
+def agent_log_context(*, trace_id: str, model_id: str, agent_id: str) -> Iterator[None]:
+    """Bind per-agent execution fields to structlog contextvars."""
+    structlog.contextvars.bind_contextvars(
+        trace_id=trace_id,
+        model_id=model_id,
+        agent_id=agent_id,
+    )
+    try:
+        yield
+    finally:
+        structlog.contextvars.clear_contextvars()
